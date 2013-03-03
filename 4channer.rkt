@@ -6,21 +6,28 @@
   "Download and save 4chan's /r/ board."
   (let* ([urls (for/list ([i 1]) (string-append "http://api.4chan.org/b/" (number->string i) ".json"))]
          [jsons (for/list ([url urls]) (string->jsexpr (port->string (get-pure-port (string->url url)))))]
-         [4chan (make-mongo-db (create-mongo) "4chan")]
+         [connection (create-mongo)]
+         [4chan (make-mongo-db connection "4chan")]
          [timestamp (string-replace (date->string (current-date) (current-seconds)) " " "_")]
          [snapshot (mongo-db-create-collection! 4chan timestamp #:capped? #f #:size 0)])
     (mongo-collection-insert-docs! snapshot jsons)
-    (close-mongo! m)))
+    (close-mongo! connection)))
 
 (4get)
 
 (define (replies)
-  (let ([4chan (make-mongo-db (create-mongo) "4chan")]
-        [collections] (mongo-db-collections 4chan))
-    (current-mongo-db 4chan)
-    (for/list (collection collections) (mongo-dict-query col query))))
+  (let* ([connection (create-mongo)]
+        [4chan (make-mongo-db connection "4chan")]
+        [collections (mongo-db-collections 4chan)]
+        [foo (current-mongo-db 4chan)]
+        [results (for/list ([collection collections])
+                   (mongo-dict-query collection '())
+                   )])
+    results))
 
-(display (replies))
+(display (for/list ([reply (first (replies))]) reply))
+
+(display (mongo-dict-shift! (dict-ref (first (for/list ([reply (first (replies))]) reply)) "threads")))
 
 (define (4plot n)
   "Plots replies per thread using n recent snapshots, writes image to /tmp/4chan-replies-per-thread.png"
