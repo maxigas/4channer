@@ -1,4 +1,5 @@
 4channer
 ========
 
-4
+Save 4chan into mongodb, in racket (stalled project).
+
